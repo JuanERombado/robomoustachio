@@ -1,0 +1,33 @@
+{
+  "name": "agent-trust-score",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ERC-8004 reputation scoring oracle on Base",
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "npm run test:contract && npm run test:scoring && npm run test:integration",
+    "test:contract": "hardhat test test/TrustScore.test.js",
+    "test:scoring": "mocha test/scoring.test.js",
+    "test:integration": "hardhat test test/integration.test.js",
+    "start:api": "node server/server.js",
+    "test:client": "node scripts/test-client.js",
+    "indexer": "node server/indexer.js",
+    "deploy:mock-identity:base-sepolia": "hardhat run scripts/deploy-mock-identity.js --network baseSepolia",
+    "seed:score:base-sepolia": "hardhat run scripts/seed-score.js --network baseSepolia",
+    "register:service:base-sepolia": "hardhat run scripts/register-service.js --network baseSepolia",
+    "deploy:base-sepolia": "hardhat run scripts/deploy.js --network baseSepolia",
+    "verify:base-sepolia": "hardhat run scripts/verify.js --network baseSepolia"
+  },
+  "dependencies": {
+    "@coinbase/x402": "latest",
+    "@openzeppelin/contracts": "^5.0.2",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.5",
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.18"
+  }
+}

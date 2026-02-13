@@ -1,0 +1,12 @@
+{
+  "network": "baseSepolia",
+  "chainId": 84532,
+  "deployer": "0x7e6238f6e99A16b2364Dbc92F548e606893a0B81",
+  "owner": "0x7e6238f6e99A16b2364Dbc92F548e606893a0B81",
+  "updater": "0x7e6238f6e99A16b2364Dbc92F548e606893a0B81",
+  "identityRegistryAddress": "0x2AEe31939662Be919ABd92e9E4368c82A1F6C286",
+  "trustScoreAddress": "0x031314c30537077b6fF63E2881522E6f51b6A5cA",
+  "queryFeeWei": "100000000000000",
+  "useMockRegistry": true,
+  "deployedAt": "2026-02-13T00:49:18.768Z"
+}
