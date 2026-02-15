@@ -25,6 +25,9 @@ Verification links:
 - TrustScore verified source: `https://basescan.org/address/0xa770C9232811bc551C19Dc41B36c7FFccE856e84#code`
 - Service registration URI update tx: `https://basescan.org/tx/0x3ec2ab605fccb202a2bcbad3489ecb73e526add02885cb937d4b47c6f0eef4ff`
 
+Brand assets:
+- Mascot image: `assets/mascot/robomoustachio-mascot.png`
+
 ## Architecture
 
 ```mermaid
