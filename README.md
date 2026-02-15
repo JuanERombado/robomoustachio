@@ -1,165 +1,232 @@
-# AgentTrustScore
+# Robomoustachio (Remy) - Agent Reputation Oracle
 
-AgentTrustScore is a reputation oracle for autonomous agents on Base. It reads ERC-8004-style feedback, computes trust scores, and serves those scores through:
+Robomoustachio is a production ERC-8004 reputation oracle on Base mainnet.
+It scores autonomous agents from feedback history and exposes trust data through:
 
-1. An on-chain smart contract (`TrustScore`) for direct agent reads.
-2. An off-chain HTTP API with x402-ready payment middleware.
+1. An on-chain `TrustScore` contract.
+2. An HTTPS API (`/score`, `/report`, `/discover`, `/health`) for agent-to-agent and app-to-agent access.
 
-The current Base Sepolia setup uses a mock identity registry for end-to-end testing. Official ERC-8004 registry addresses can be swapped in for mainnet deployment.
+## Live Status (As Of February 14, 2026)
+
+| Item | Value |
+|---|---|
+| Production API | `https://robomoustach.io` |
+| Discover document | `https://robomoustach.io/discover` |
+| Network | Base mainnet (`chainId=8453`) |
+| TrustScore contract | `0xa770C9232811bc551C19Dc41B36c7FFccE856e84` |
+| Identity Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| Reputation Registry | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
+| Updater wallet | `0x05EEBF02305BF34C446C298105174e099C716bb9` |
+| Query fee (contract) | `100000000000000` wei |
+| Mainnet registration URI | `https://robomoustach.io/discover` |
+| Mainnet registration agent ID | `17201` |
+
+Verification links:
+- TrustScore verified source: `https://basescan.org/address/0xa770C9232811bc551C19Dc41B36c7FFccE856e84#code`
+- Service registration URI update tx: `https://basescan.org/tx/0x3ec2ab605fccb202a2bcbad3489ecb73e526add02885cb937d4b47c6f0eef4ff`
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A[Agent Clients<br/>AgentKit / Virtuals ACP] -->|On-chain read| B[TrustScore.sol<br/>Base]
-    A -->|HTTP query<br/>x402-gated| C[Express API]
-    C -->|Read score/report| B
+    A[Client App / Human Operator] -->|HTTPS| B[robomoustach.io API]
+    C[AI Agent<br/>AgentKit / ACP] -->|discover + score/report| B
+    C -->|optional direct read| D[TrustScore.sol<br/>Base Mainnet]
 
-    D[Indexer] -->|Query feedback events| E[Reputation Registry]
-    D -->|Compute score via scoring.js| F[Scoring Engine]
-    F -->|batchUpdateScores| B
+    B -->|read score/report| D
+    B -->|serves metadata| E[/discover]
 
-    C -->|Discovery JSON| G[/discover endpoint]
+    F[Indexer cron<br/>15 min] -->|read FeedbackPosted events| G[ERC-8004 Reputation Registry]
+    F -->|scoreFeedback logic| H[scoring.js]
+    H -->|batchUpdateScores (max 100)| D
 ```
 
-## Contract Addresses (Base Sepolia)
+## Quickstart For People (Use The Live Service)
 
-| Component | Address | Notes |
-|---|---|---|
-| TrustScore | `0x031314c30537077b6fF63E2881522E6f51b6A5cA` | Verified on BaseScan |
-| Identity Registry (mock) | `0xc69A921Ca99e634705Bc5EEa30E116AAE93EEd28` | Used for Phase 6 test registration flow |
-| Reputation Registry (configured reference) | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` | Swap to official live flow as needed |
+No deploy required. You can call the production API directly.
 
-Verified contract:
-- https://sepolia.basescan.org/address/0x031314c30537077b6fF63E2881522E6f51b6A5cA#code
+### 1) Health and discovery
 
-## API Quickstart
+```bash
+curl "https://robomoustach.io/health"
+curl "https://robomoustach.io/discover"
+```
 
-### 1) Install and configure
+### 2) Query score and report
+
+```bash
+curl "https://robomoustach.io/score/2"
+curl "https://robomoustach.io/report/2"
+```
+
+Example (`/score/2`):
+
+```json
+{
+  "agentId": "2",
+  "score": 950,
+  "confidence": 1,
+  "lastUpdated": 1771085895
+}
+```
+
+Example (`/report/2`):
+
+```json
+{
+  "agentId": "2",
+  "score": 950,
+  "confidence": 1,
+  "totalFeedback": 100,
+  "positiveFeedback": 98,
+  "recentTrend": "stale",
+  "flagged": false,
+  "riskFactors": [],
+  "negativeRateBps": 200,
+  "lastUpdated": 1771085895
+}
+```
+
+## Quickstart For AI Agents
+
+### Discovery-first integration flow
+
+1. `GET /discover` to fetch capabilities and pricing metadata.
+2. Query `GET /score/:agentId` before executing sensitive actions.
+3. If needed, query `GET /report/:agentId` for deeper risk factors.
+4. Apply local policy gates before proceeding.
+
+Minimal policy example:
+
+```js
+const base = "https://robomoustach.io";
+const id = "3";
+
+const score = await fetch(`${base}/score/${id}`).then((r) => r.json());
+const report = await fetch(`${base}/report/${id}`).then((r) => r.json());
+
+if (score.score <= 500 || report.flagged) {
+  throw new Error(`Abort: risky agent ${id}`);
+}
+```
+
+### AgentKit test bot in this repo
+
+The repo includes a minimal AgentKit bot under `test-agent/`.
+
+```bash
+cd test-agent
+npm install
+cp .env.example .env
+```
+
+Set required values in `test-agent/.env`:
+- `CDP_API_KEY_ID`
+- `CDP_API_KEY_SECRET`
+- `CDP_WALLET_SECRET`
+- `AGENTKIT_NETWORK_ID=base-mainnet`
+- `TRUST_ORACLE_BASE_URL=https://robomoustach.io`
+- `TRUST_AGENT_IDS=2,3,5,6`
+
+Run:
+
+```bash
+npm start
+```
+
+Output format:
+
+```text
+Checking Agent 2... Score: 950, Confidence: high -> TRUSTED, proceeding
+Checking Agent 3... Score: 400, Confidence: low -> RISKY, aborting
+Checking Agent 5... Score: 100, Confidence: low -> DANGEROUS, blacklisted
+Checking Agent 6... Score: 0, Confidence: none -> UNKNOWN, requesting verification
+```
+
+## Run Your Own Instance (Operator Setup)
+
+### 1) Install
 
 ```bash
 npm install
 cp .env.example .env
 ```
 
-Set at minimum:
-- `API_RPC_URL=https://sepolia.base.org`
-- `TRUST_SCORE_ADDRESS=0x031314c30537077b6fF63E2881522E6f51b6A5cA`
-- `PORT=3000`
+### 2) Configure core env
 
-### 2) Start API
+Required for production-like operation:
+- `BASE_MAINNET_RPC_URL`
+- `TRUST_SCORE_ADDRESS`
+- `IDENTITY_REGISTRY_ADDRESS`
+- `REPUTATION_REGISTRY_ADDRESS`
+- `UPDATER_PRIVATE_KEY` (for indexer writes)
+- `PUBLIC_BASE_URL` and `AGENT_REGISTRATION_URI`
+
+### 3) Start API and indexer
 
 ```bash
 npm run start:api
+npm run indexer
 ```
 
-### 3) Query `/score` and `/report`
+### 4) Smoke test API locally
 
 ```bash
-curl "http://localhost:3000/score/1"
+npm run test:client
 ```
+
+## On-Chain Seeding Utilities
+
+Seed one score (older script):
 
 ```bash
-curl "http://localhost:3000/report/1"
+npm run seed:score:base-sepolia
 ```
 
-Example response (`/score/1`):
-
-```json
-{
-  "agentId": "1",
-  "score": 800,
-  "confidence": 0.2,
-  "lastUpdated": 1770943790
-}
-```
-
-Example response (`/report/1`):
-
-```json
-{
-  "agentId": "1",
-  "score": 800,
-  "confidence": 0.2,
-  "totalFeedback": 10,
-  "positiveFeedback": 8,
-  "recentTrend": "caution",
-  "flagged": false,
-  "riskFactors": ["low_feedback_volume"],
-  "negativeRateBps": 2000,
-  "lastUpdated": 1770943790
-}
-```
-
-### Discovery endpoint
-
-The service exposes ERC-8004-style registration metadata at:
+Seed test cohort on Base mainnet (`agentId` 2-6):
 
 ```bash
-curl "http://localhost:3000/discover"
+npm run seed:test-agents:base-mainnet
 ```
 
-## Integration with AgentKit or Virtuals ACP Agents
+## API Endpoints
 
-### AgentKit pattern
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/health` | `GET` | Service status, payment mode, contract wiring |
+| `/discover` | `GET` | ERC-8004 registration/capability document |
+| `/score/:agentId` | `GET` | Trust score + confidence |
+| `/report/:agentId` | `GET` | Full risk report |
 
-Use trust checks as a pre-transaction guard:
+## Current Payment Mode Note
 
-1. Call `/discover` to read capabilities and pricing.
-2. Query `/score/:agentId` before a high-value action.
-3. Enforce local policy, for example: block if `score < 600` or `flagged=true`.
-4. Escalate to `/report/:agentId` for richer risk factors when needed.
+The service advertises x402 pricing (`$0.001 /score`, `$0.005 /report`), but current runtime may fall back to stub middleware when a compatible x402 express middleware factory is unavailable.
 
-Minimal Node example:
-
-```js
-const baseUrl = process.env.TRUST_ORACLE_URL || "http://localhost:3000";
-const agentId = "1";
-
-const scoreRes = await fetch(`${baseUrl}/score/${agentId}`);
-if (!scoreRes.ok) throw new Error(`Score query failed: ${scoreRes.status}`);
-const score = await scoreRes.json();
-
-if (score.score < 600) {
-  throw new Error(`Rejected counterparty ${agentId}: low trust score ${score.score}`);
-}
-```
-
-### Virtuals ACP pattern
-
-Embed the same trust gate in your task/intent execution pipeline:
-
-1. Resolve counterpart agent ID.
-2. Query trust oracle.
-3. Apply policy thresholds.
-4. Continue or abort action.
-
-Suggested policy defaults:
-- minimum score: `600`
-- deny if flagged: `true`
-- require confidence: `>= 0.3` for larger-value actions
-
-## Commands
+Check actual runtime mode:
 
 ```bash
-# Test suites
+curl "https://robomoustach.io/health"
+```
+
+Look at:
+- `payment.mode`
+- `payment.usingRealMiddleware`
+- `payment.reason`
+
+## Security Notes
+
+- Never commit `.env` files with private keys or API secrets.
+- Use separate keys for production services vs test agents.
+- Rotate any credential that has ever appeared in screenshots, logs, or chat.
+- Keep updater wallet minimally funded and separate from owner/deployer wallet.
+
+## Test And Build Commands
+
+```bash
+npm run build
 npm test
 
-# API + client smoke test
-npm run start:api
-npm run test:client
-
-# Deploy / verify (Base Sepolia)
-npm run deploy:base-sepolia
-npm run verify:base-sepolia
-
-# Seed and register service
-npm run seed:score:base-sepolia
-npm run register:service:base-sepolia
+npm run test:contract
+npm run test:scoring
+npm run test:integration
 ```
-
-## Notes
-
-- Current Sepolia registration flow is validated with a mock identity registry.
-- Keep official ERC-8004 registry addresses in env for mainnet rollout.
-- Do not commit secrets (`DEPLOYER_PRIVATE_KEY`, API keys) to source control.

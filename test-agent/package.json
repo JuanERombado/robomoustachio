@@ -1,0 +1,17 @@
+{
+  "name": "robomoustachio-test-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal AgentKit test bot for Robomoustachio trust oracle",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@coinbase/agentkit": "^0.10.4",
+    "dotenv": "^16.4.5"
+  }
+}

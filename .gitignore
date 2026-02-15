@@ -10,3 +10,4 @@ typechain-types/
 dist/
 build/
 server/logs/
+test-agent/wallet-state.json
