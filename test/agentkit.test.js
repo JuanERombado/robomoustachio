@@ -89,6 +89,34 @@ test("queryTrustScore supports demo mode success", async () => {
   assert.equal(response.recommendation, RECOMMENDATION.PROCEED);
 });
 
+test("queryTrustScore maps medium confidence band and does not require trustScoreAddress for API-only mode", async () => {
+  const fetchImpl = async (url) => {
+    assert.equal(url, "https://robomoustach.io/score/7?demo=true");
+    return makeResponse(200, {
+      demo: true,
+      agentId: "7",
+      score: 650,
+      confidenceBand: "medium",
+      verdict: "CAUTION",
+    });
+  };
+
+  const client = createAgentKitClient({
+    config: buildConfig({
+      defaultMode: SOURCE.API_DEMO,
+      allowOnchainFallback: false,
+      trustScoreAddress: "",
+    }),
+    fetchImpl,
+  });
+
+  const response = await client.queryTrustScore("7");
+  assert.equal(response.status, STATUS.OK);
+  assert.equal(response.source, SOURCE.API_DEMO);
+  assert.equal(response.confidence, 0.7);
+  assert.equal(response.verdict, VERDICT.CAUTION);
+});
+
 test("queryTrustScore supports paid mode success", async () => {
   const paidFetch = async (url) => {
     assert.equal(url, "https://robomoustach.io/score/3");
@@ -263,4 +291,3 @@ test("agent not found is returned as structured error when no fallbacks succeed"
   assert.equal(response.fallback, FALLBACK_CODE.AGENT_NOT_FOUND);
   assert.equal(response.score, null);
 });
-

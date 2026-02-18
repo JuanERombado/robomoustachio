@@ -45,6 +45,9 @@ function confidenceFromBand(band) {
   if (normalized === "high") {
     return 1;
   }
+  if (normalized === "medium") {
+    return 0.7;
+  }
   if (normalized === "low") {
     return 0.4;
   }
@@ -187,17 +190,27 @@ function resolveSequence(requestedMode, config, overrides = {}) {
 }
 
 function createContractReader(config) {
-  if (!config.trustScoreAddress) {
-    throw new Error("AGENTKIT_TRUST_SCORE_ADDRESS (or TRUST_SCORE_ADDRESS) is required for on-chain fallback");
-  }
   const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-  const contract = new ethers.Contract(config.trustScoreAddress, TRUST_SCORE_ABI, provider);
+  let contract = null;
+
+  function getContract() {
+    if (!config.trustScoreAddress) {
+      const error = new Error("AGENTKIT_TRUST_SCORE_ADDRESS (or TRUST_SCORE_ADDRESS) is required for on-chain fallback");
+      error.code = "CONTRACT_UNCONFIGURED";
+      throw error;
+    }
+    if (!contract) {
+      contract = new ethers.Contract(config.trustScoreAddress, TRUST_SCORE_ABI, provider);
+    }
+    return contract;
+  }
+
   return {
     async getScore(agentId) {
-      return contract.getScore(agentId);
+      return getContract().getScore(agentId);
     },
     async getDetailedReport(agentId) {
-      return contract.getDetailedReport(agentId);
+      return getContract().getDetailedReport(agentId);
     },
   };
 }
