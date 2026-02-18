@@ -1,0 +1,28 @@
+[
+  {
+    "agentId": "2",
+    "label": "excellent_reputation",
+    "expectedScoreBand": "high"
+  },
+  {
+    "agentId": "3",
+    "label": "mixed_reputation",
+    "expectedScoreBand": "medium"
+  },
+  {
+    "agentId": "5",
+    "label": "high_risk",
+    "expectedScoreBand": "low"
+  },
+  {
+    "agentId": "6",
+    "label": "no_history",
+    "expectedScoreBand": "unknown"
+  },
+  {
+    "agentId": "1",
+    "label": "baseline_agent",
+    "expectedScoreBand": "medium"
+  }
+]
+

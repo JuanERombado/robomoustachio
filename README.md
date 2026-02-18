@@ -113,6 +113,25 @@ if (score.score <= 500 || report.flagged) {
 }
 ```
 
+### Production AgentKit module (`src/agentkit`)
+
+The repository now includes a production-first AgentKit integration module under `src/agentkit/` with:
+
+- normalized response schema (`ok | degraded | error`)
+- graceful fallback handling (`invalid_agent_id`, `api_timeout`, `payment_unavailable`, `rpc_unavailable`, `oracle_unavailable`)
+- three query modes: `api_paid`, `api_demo`, and direct `trustscore_contract`
+
+Run:
+
+```bash
+npm run agentkit:demo
+npm run agentkit:test
+```
+
+Full docs:
+
+- `docs/agentkit-integration.md`
+
 ### AgentKit test bot in this repo
 
 The repo includes a minimal AgentKit bot under `test-agent/`.

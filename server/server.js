@@ -11,6 +11,7 @@ const { createRequestLoggerMiddleware } = require("./requestLogger");
 const { buildRegistrationDocument, formatUsdPrice } = require("./registration");
 const { createPaymentMiddleware, extractPaymentHeaders, hasPaymentProof } = require("./paymentMiddleware");
 const { validateAgentIdParam } = require("./validation");
+const { createAgentKitActions, loadAgentKitConfig } = require("../src/agentkit");
 
 const TRUST_SCORE_ABI = [
   "function getScore(uint256 agentId) view returns (uint256)",
@@ -255,6 +256,8 @@ function createApp(env = process.env) {
     enforceStubPayment: env.X402_STUB_ENFORCE || "false",
     env,
   });
+  const agentkitConfig = loadAgentKitConfig(env);
+  const agentkitActions = createAgentKitActions({ config: agentkitConfig });
 
   app.disable("x-powered-by");
   app.use(express.json());
@@ -275,6 +278,12 @@ function createApp(env = process.env) {
       trustScore: {
         configured: trustScoreReader.enabled,
         contractAddress: trustScoreReader.enabled ? trustScoreReader.contractAddress : null,
+      },
+      agentkit: {
+        integrated: true,
+        defaultMode: agentkitConfig.defaultMode,
+        allowDemoFallback: agentkitConfig.allowDemoFallback,
+        allowOnchainFallback: agentkitConfig.allowOnchainFallback,
       },
     });
   });
@@ -443,6 +452,7 @@ function createApp(env = process.env) {
     port,
     payment,
     trustScoreReader,
+    agentkitActions,
   };
 }
 
